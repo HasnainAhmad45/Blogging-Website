@@ -1,0 +1,15 @@
+@import "tailwindcss";
+.loader {
+  border: 4px solid transparent;
+  border-top-color: #3b82f6; /* Tailwind blue-500 */
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
