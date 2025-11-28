@@ -116,17 +116,6 @@ export default function AuthorPage({ user }) {
             </div>
           )}
 
-          {/* Mobile Number */}
-          {author.mobileNumber && (
-            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-              <Phone className="w-5 h-5 text-slate-600 mt-1 flex-shrink-0" />
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Mobile Number</p>
-                <p className="text-sm font-medium text-gray-900">{author.mobileNumber}</p>
-              </div>
-            </div>
-          )}
-
           {/* Joined Date */}
           {author.createdAt && (
             <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">

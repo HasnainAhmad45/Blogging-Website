@@ -42,9 +42,6 @@ export default function AllAuthors() {
               />
               <div>
                 <h4 className="font-semibold">{author.name}</h4>
-                <p className="text-sm text-gray-500">
-                  {author.postCount} published posts
-                </p>
               </div>
             </div>
           ))

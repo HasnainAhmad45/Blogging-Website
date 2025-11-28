@@ -18,6 +18,7 @@ import SinglePost from "./components/SinglePost/SinglePost";
 import AllAuthors from "./components/Authors/Authors";
 import AllTrending from "./components/TrendingPosts/Trending";
 import AuthorDetails from "./components/Authors/SingleAuthor";
+import PrivacyPolicy from "./components/privacy";
 
 export default function App() {
   // ✅ Initialize user from localStorage
@@ -87,6 +88,7 @@ export default function App() {
             <Route path="/post/:id" element={<SinglePost user={user} />} />
             <Route path="/all-authors" element={<AllAuthors />} />
             <Route path="/authors/:id" element={<AuthorDetails />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/trending" element={<AllTrending user={user} />} />
           </Routes>
         </div>

@@ -31,7 +31,7 @@ function Contact() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="mt-10 min-h-screen flex items-center justify-center bg-gray-50">
       <div className="flex w-full max-w-4xl shadow-xl rounded-xl overflow-hidden">
         
         {/* Left Side (Image) */}
