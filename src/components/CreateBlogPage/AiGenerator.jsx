@@ -42,6 +42,21 @@ const AiGenerator = () => {
     }
   };
 
+  const handleCopy = () => {
+    if (!response) return;
+    navigator.clipboard.writeText(response).then(() => {
+      alert("Text copied to clipboard!");
+    });
+  };
+
+  const handleKeyPress = (e) => {
+    // Trigger generate when Enter is pressed without Shift (to allow multi-line input)
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); // Prevent new line
+      handleGenerate();
+    }
+  };
+
   return (
     <Card className="shadow-xl rounded-2xl">
       <CardContent className="p-6 flex flex-col gap-4">
@@ -51,6 +66,7 @@ const AiGenerator = () => {
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           rows={4}
+          onKeyDown={handleKeyPress} // <-- handle Enter key
         />
 
         <Button
@@ -64,8 +80,14 @@ const AiGenerator = () => {
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         {response && (
-          <Card className="bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">
+          <Card className="bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto flex flex-col gap-2">
             <p className="text-gray-800 whitespace-pre-wrap">{response}</p>
+            <Button
+              onClick={handleCopy}
+              className="self-end mt-2 text-sm px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded"
+            >
+              Copy
+            </Button>
           </Card>
         )}
       </CardContent>
