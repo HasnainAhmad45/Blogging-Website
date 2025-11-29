@@ -45,8 +45,7 @@ const AiGenerator = () => {
   return (
     <Card className="shadow-xl rounded-2xl">
       <CardContent className="p-6 flex flex-col gap-4">
-        <h2 className="text-xl font-bold mb-2">💡 Get Ideas for blogs</h2>
-
+        <h2 className="text-xl font-bold mb-2">💡 Get Blog ideas</h2>
         <Textarea
           placeholder="Type your prompt here..."
           value={prompt}

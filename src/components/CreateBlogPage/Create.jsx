@@ -1,114 +1,296 @@
-import React from "react";
-import { Github, Linkedin, Mail, Instagram } from "lucide-react";
+import React, { useState } from "react";
+import axios from "axios";
+import { Card } from "@/components/ui/Card";
+import { CardContent } from "@/components/ui/CardContent";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Upload,
+  Send,
+  ThumbsUp,
+  Share2,
+  MessageSquare,
+} from "lucide-react";
+import AiGenerator from "./AiGenerator";
 
-export default function Footer() {
-  const currentYear = new Date().getFullYear();
+const categories = ["Tech", "Lifestyle", "Business", "Travel", "Food", "Health"];
+
+export default function CreateBlog({ user }) {
+  const [subject, setSubject] = useState("");
+  const [text, setText] = useState("");
+  const [category, setCategory] = useState("");
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageDetails, setImageDetails] = useState(null);
+  const [draftBlog, setDraftBlog] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Restrict access to authors
+  if (!user || user.role !== "author") {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Card className="p-6 shadow-lg text-center">
+          <h2 className="text-xl font-bold mb-2">Access Denied</h2>
+          <p className="text-gray-600">
+            You must be logged in as an Author to publish blogs.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  // ---------- Image Upload ----------
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png"];
+    if (!allowedTypes.includes(file.type)) {
+      setError("Only JPG and PNG files are allowed!");
+      setImage(null);
+      setImagePreview(null);
+      setImageDetails(null);
+      return;
+    }
+
+    setError("");
+    setImage(file);
+    setImagePreview(URL.createObjectURL(file));
+    setImageDetails({
+      name: file.name,
+      size: (file.size / 1024).toFixed(2) + " KB",
+    });
+  };
+
+  // ---------- Save Draft ----------
+  const handleSaveDraft = async () => {
+    if (!subject.trim() || !text.trim() || !category)
+      return alert("Please fill all required fields.");
+
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      let imageUrl = null;
+
+      if (image) {
+        const formData = new FormData();
+        formData.append("image", image);
+
+        const uploadRes = await axios.post(
+          "http://localhost:5000/api/upload",
+          formData,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
+
+        imageUrl = uploadRes.data.url;
+      }
+
+      const res = await axios.post(
+        "http://localhost:5000/api/blogs",
+        { subject, text, category, image: imageUrl },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setDraftBlog({
+        ...res.data,
+        subject,
+        text,
+        category,
+        image: imageUrl,
+        status: "draft",
+      });
+
+      alert("✅ Draft saved successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Failed to save draft. Check console for details.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ---------- Publish Draft ----------
+  const handlePublishDraft = async () => {
+    if (!draftBlog) return;
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `http://localhost:5000/api/blogs/publish/${draftBlog.blogId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setDraftBlog({ ...draftBlog, status: "published" });
+      alert("🎉 Blog published successfully!");
+
+      // Reset form
+      setSubject("");
+      setText("");
+      setCategory("");
+      setImage(null);
+      setImagePreview(null);
+      setImageDetails(null);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Failed to publish blog.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <footer className="bg-gradient-to-b from-gray-50 to-white border-t border-gray-200">
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-8">
-          {/* Brand Section */}
-          <div className="md:col-span-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">K</span>
+    <div className="p-6 max-w-7xl mx-auto">
+      {/* Flex container to place blog form on left and AI generator on right */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left Side: Blog Form */}
+        <div className="flex-1">
+          <Card className="shadow-xl rounded-2xl mb-6 lg:mb-0">
+            <CardContent className="p-6 space-y-4">
+              <h1 className="text-2xl font-bold mb-4">📝 Write a New Blog</h1>
+
+              <Input
+                type="text"
+                placeholder="Enter Blog Subject (required)"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+              />
+
+              <Textarea
+                placeholder="Write your blog content (required)"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={5}
+              />
+
+              {/* Category Selector */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  Select Category
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full text-sm bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 p-2"
+                >
+                  <option value="">-- Choose category --</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900">Kick Start</h3>
-            </div>
-            <p className="text-gray-600 leading-relaxed mb-4 max-w-md">
-              A modern blogging platform empowering writers to share their stories, 
-              ideas, and insights with a global audience.
-            </p>
-            <p className="text-sm text-gray-500 italic">
-              Crafted with passion by Hasnain Ahmad
-            </p>
-          </div>
 
-          {/* Quick Links */}
-          <div className="md:col-span-3">
-            <h3 className="text-gray-900 font-semibold mb-4 text-lg">Navigation</h3>
-            <ul className="space-y-3">
-              <li>
-                <a href="/about" className="text-gray-600 hover:text-slate-700 transition-colors flex items-center group">
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 group-hover:bg-slate-700 transition-colors"></span>
-                  About us
-                </a>
-              </li>
-              <li>
-                <a href="/contact" className="text-gray-600 hover:text-slate-700 transition-colors flex items-center group">
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 group-hover:bg-slate-700 transition-colors"></span>
-                  Contact Us
-                </a>
-              </li>
-              <li>
-                <a href="/login" className="text-gray-600 hover:text-slate-700 transition-colors flex items-center group">
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2 group-hover:bg-slate-700 transition-colors"></span>
-                  Join us
-                </a>
-              </li>
-            </ul>
-          </div>
+              {/* Image Upload */}
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Upload className="w-5 h-5" />
+                  <span>Upload Picture (optional)</span>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                </label>
 
-          {/* Social Links */}
-          <div className="md:col-span-4">
-            <h3 className="text-gray-900 font-semibold mb-4 text-lg">Stay Connected</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Follow us on social media for updates, tips, and inspiration.
-            </p>
-            <div className="flex gap-3">
-              <a 
-                href="https://www.instagram.com/about_hasnain/" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 bg-gray-100 hover:bg-gradient-to-br hover:from-purple-500 hover:to-pink-500 text-gray-700 hover:text-white rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                aria-label="Instagram"
+                {imagePreview && (
+                  <img
+                    src={imagePreview}
+                    alt="preview"
+                    className="rounded-lg w-full mt-2"
+                  />
+                )}
+
+                {imageDetails && (
+                  <p className="text-sm text-gray-600">
+                    <strong>{imageDetails.name}</strong> ({imageDetails.size})
+                  </p>
+                )}
+                {error && <p className="text-sm text-red-500">{error}</p>}
+              </div>
+
+              {/* Buttons */}
+              <Button
+                className="w-full flex items-center justify-center gap-2 mt-4"
+                onClick={handleSaveDraft}
+                disabled={loading}
               >
-                <Instagram size={20} />
-              </a>
-              <a 
-                href="https://github.com/HasnainAhmad45" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 bg-gray-100 hover:bg-gray-900 text-gray-700 hover:text-white rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                aria-label="GitHub"
-              >
-                <Github size={20} />
-              </a>
-              <a 
-                href="https://www.linkedin.com/in/hasnain-ahmad-52a370281/" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 bg-gray-100 hover:bg-blue-600 text-gray-700 hover:text-white rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                aria-label="LinkedIn"
-              >
-                <Linkedin size={20} />
-              </a>
-              <a 
-                href="mailto:hasnainahmad3453@gmail.com" 
-                className="w-10 h-10 bg-gray-100 hover:bg-red-500 text-gray-700 hover:text-white rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                aria-label="Email"
-              >
-                <Mail size={20} />
-              </a>
-            </div>
-          </div>
+                <Send className="w-4 h-4" />{" "}
+                {loading ? "Saving Draft..." : "Save Draft"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Draft Preview */}
+          {draftBlog && (
+            <Card className="mt-6 shadow-lg rounded-2xl">
+              <CardContent className="p-6">
+                <h2 className="text-xl font-bold flex justify-between items-center">
+                  {draftBlog.subject}
+                  <span
+                    className={`px-3 py-1 rounded-full text-white font-medium ${
+                      draftBlog.status === "published"
+                        ? "bg-green-500"
+                        : "bg-yellow-500"
+                    }`}
+                  >
+                    {draftBlog.status}
+                  </span>
+                </h2>
+
+                {draftBlog.text && (
+                  <p className="mt-2 text-gray-700">{draftBlog.text}</p>
+                )}
+                {draftBlog.image && (
+                  <img
+                    src={draftBlog.image}
+                    alt="blog"
+                    className="w-full rounded-lg mt-4"
+                  />
+                )}
+
+                <div className="flex gap-6 mt-4 text-gray-600">
+                  <button className="flex items-center gap-1 hover:text-slate-700 transition-colors">
+                    <ThumbsUp className="w-5 h-5" /> Like
+                  </button>
+                  <button className="flex items-center gap-1 hover:text-slate-700 transition-colors">
+                    <Share2 className="w-5 h-5" /> Share
+                  </button>
+                  <button className="flex items-center gap-1 hover:text-slate-700 transition-colors">
+                    <MessageSquare className="w-5 h-5" /> Comment
+                  </button>
+                </div>
+
+                {draftBlog.status === "draft" && (
+                  <Button
+                    className="w-full flex items-center justify-center gap-2 mt-6"
+                    onClick={handlePublishDraft}
+                    disabled={loading}
+                  >
+                    <Send className="w-4 h-4" />
+                    {loading ? "Publishing..." : "Publish Blog"}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 border-t border-gray-200">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-gray-600">
-              © {currentYear} Kick Start. All rights reserved.
-            </p>
-            <div className="flex gap-6 text-sm text-gray-600">
-              <a href="/privacy" className="hover:text-slate-700 transition-colors">Privacy Policy</a>
-              <a href="/terms" className="hover:text-slate-700 transition-colors">Terms of Service</a>
-              <a href="/cookies" className="hover:text-slate-700 transition-colors">Cookie Policy</a>
-            </div>
-          </div>
+        {/* Right Side: AI Generator */}
+        <div className="w-full lg:w-1/3">
+          <Card className="shadow-xl rounded-2xl sticky top-6">
+            <CardContent>
+              <AiGenerator />
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </footer>
+    </div>
   );
 }
