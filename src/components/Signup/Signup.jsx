@@ -16,6 +16,7 @@ function Signup() {
   const [preview, setPreview] = useState(null);
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState(1);
+  const [passwordErrors, setPasswordErrors] = useState([]);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -30,9 +31,33 @@ function Signup() {
     }
   };
 
-  // ✅ Request OTP with image upload
+  // ---------- Password Validation ----------
+  const validatePassword = (password) => {
+    const isValid =
+      password.length >= 8 &&
+      /[A-Z]/.test(password) &&
+      /[a-z]/.test(password) &&
+      /\d/.test(password) &&
+      /[@$!%*?&]/.test(password);
+
+    if (!isValid) {
+      setPasswordErrors(["Password must be at least 8 characters and include 1 uppercase, 1 lowercase, 1 number, and 1 special character (@$!%*?&)"]);
+    } else {
+      setPasswordErrors([]);
+    }
+
+    return isValid;
+  };
+
+
+  // ---------- Request OTP ----------
   const requestOtp = async (e) => {
     e.preventDefault();
+
+    if (!validatePassword(form.password)) {
+      alert("Password does not meet the requirements!");
+      return;
+    }
 
     try {
       const formData = new FormData();
@@ -47,11 +72,13 @@ function Signup() {
         formData.append("profilePic", form.profilePic);
       }
 
-      await axios.post("http://localhost:5000/api/auth/request-otp", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      await axios.post(
+        "http://localhost:5000/api/auth/request-otp",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
 
       alert("OTP sent successfully!");
       setStep(2);
@@ -61,13 +88,17 @@ function Signup() {
     }
   };
 
+  // ---------- Verify OTP ----------
   const verifyOtp = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/verify-otp", {
-        email: form.email,
-        otp,
-      });
+      const res = await axios.post(
+        "http://localhost:5000/api/auth/verify-otp",
+        {
+          email: form.email,
+          otp,
+        }
+      );
 
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
@@ -148,11 +179,21 @@ function Signup() {
               type="password"
               name="password"
               value={form.password}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleChange(e);
+                validatePassword(e.target.value);
+              }}
               placeholder="Password"
               className="w-full rounded-lg border border-gray-300 p-3 mt-3 focus:ring-2 focus:ring-slate-500 focus:border-slate-500 focus:outline-none transition"
               required
             />
+            {passwordErrors.length > 0 && (
+              <ul className="text-sm text-red-500 mt-2 list-disc list-inside">
+                {passwordErrors.map((err, idx) => (
+                  <li key={idx}>{err}</li>
+                ))}
+              </ul>
+            )}
 
             <div className="mt-4">
               <label className="block font-medium text-gray-700 mb-2">

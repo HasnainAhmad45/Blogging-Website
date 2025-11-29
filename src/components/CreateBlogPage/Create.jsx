@@ -79,14 +79,22 @@ export default function CreateBlog({ user }) {
         const formData = new FormData();
         formData.append("image", image);
 
+        const token = localStorage.getItem("token"); // get your JWT token
+
         const uploadRes = await axios.post(
           "http://localhost:5000/api/upload",
           formData,
-          { headers: { "Content-Type": "multipart/form-data" } }
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+              Authorization: `Bearer ${token}`, // ✅ include token
+            },
+          }
         );
 
         imageUrl = uploadRes.data.url;
       }
+
 
       const res = await axios.post(
         "http://localhost:5000/api/blogs",
@@ -234,11 +242,10 @@ export default function CreateBlog({ user }) {
                 <h2 className="text-xl font-bold flex justify-between items-center">
                   {draftBlog.subject}
                   <span
-                    className={`px-3 py-1 rounded-full text-white font-medium ${
-                      draftBlog.status === "published"
+                    className={`px-3 py-1 rounded-full text-white font-medium ${draftBlog.status === "published"
                         ? "bg-green-500"
                         : "bg-yellow-500"
-                    }`}
+                      }`}
                   >
                     {draftBlog.status}
                   </span>

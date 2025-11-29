@@ -1,20 +1,13 @@
 const express = require("express");
 const db = require("../db");
 const authenticate = require("../middleware/authenticate");
-const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const cloudinary = require("../config/cloudinary");
+const upload = require("../middleware/upload");
+
 
 const router = express.Router();
-
-// Multer setup for image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) =>
-    cb(null, Date.now() + path.extname(file.originalname)),
-});
-const upload = multer({ storage });
 
 router.post("/", authenticate, upload.single("image"), (req, res) => {
   const { subject, text, status, category, image } = req.body;

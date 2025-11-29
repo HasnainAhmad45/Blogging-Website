@@ -2,15 +2,12 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../db");
-const multer = require("multer");
 const sendOtp = require("../utils/otp");
 const { uploadToCloudinary } = require("../config/cloudinary");
 const authenticate = require("../middleware/authenticate");
-
+const upload = require("../middleware/upload");
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
 
-// ✅ Helper: Generate JWT
 const generateToken = (user) => {
   if (!process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET is not configured");

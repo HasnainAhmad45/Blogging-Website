@@ -2,98 +2,54 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const auth = require("../middleware/authenticate");
-const multer = require("multer");
-const { v2: cloudinary } = require("cloudinary");
-const streamifier = require("streamifier");
+const upload = require("../middleware/upload");       
+const { cloudinary, uploadToCloudinary } = require("../config/cloudinary");
 
-// ✅ Multer setup (store in memory)
-const upload = multer({ storage: multer.memoryStorage() });
+router.put("/updateProfilePic/:id", auth, upload.single("profilePic"), async (req, res) => {
+  try {
+    const userId = req.params.id;
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-// ✅ Upload helper
-function uploadToCloudinary(buffer, folder) {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream({ folder }, (err, result) => {
-      if (err) return reject(err);
-      resolve(result);
-    });
-    streamifier.createReadStream(buffer).pipe(stream);
-  });
-}
+    // Get old profilePicId
+    const [rows] = await db.promise().query("SELECT profilePicId FROM users WHERE id = ?", [userId]);
+    const oldPublicId = rows.length ? rows[0].profilePicId : null;
 
+    // Upload new profile pic
+    const result = await uploadToCloudinary(req.file.buffer, "user_profiles");
+    const newImageUrl = result.secure_url;
+    const newPublicId = result.public_id;
 
-router.put(
-  "/updateProfilePic/:id",
-  upload.single("profilePic"),
-  async (req, res) => {
-    try {
-      const userId = req.params.id;
-      if (!req.file)
-        return res.status(400).json({ message: "No file uploaded" });
+    // Delete old picture from Cloudinary
+    if (oldPublicId) await cloudinary.uploader.destroy(oldPublicId);
 
-      // Get old profilePicId
-      const [rows] = await db
-        .promise()
-        .query("SELECT profilePicId FROM users WHERE id = ?", [userId]);
-      const oldPublicId = rows.length ? rows[0].profilePicId : null;
+    // Update DB
+    await db.promise().query(
+      "UPDATE users SET profile_picture = ?, profilePicId = ? WHERE id = ?",
+      [newImageUrl, newPublicId, userId]
+    );
 
-      // Upload new pic
-      const result = await uploadToCloudinary(req.file.buffer, "user_profiles");
-      const newImageUrl = result.secure_url;
-      const newPublicId = result.public_id;
-
-      // Delete old pic from Cloudinary
-      if (oldPublicId) await cloudinary.uploader.destroy(oldPublicId);
-
-      // Update DB
-      await db
-        .promise()
-        .query(
-          "UPDATE users SET profile_picture = ?, profilePicId = ? WHERE id = ?",
-          [newImageUrl, newPublicId, userId]
-        );
-
-      res.json({
-        message: "Profile picture updated successfully",
-        imageUrl: newImageUrl,
-      });
-    } catch (err) {
-      console.error("❌ Error updating profile picture:", err);
-      const errorMessage = err.message || "Failed to upload picture";
-      res.status(500).json({ message: errorMessage });
-    }
+    res.json({ message: "Profile picture updated successfully", imageUrl: newImageUrl });
+  } catch (err) {
+    console.error("Error updating profile picture:", err);
+    res.status(500).json({ message: "Failed to upload picture" });
   }
-);
+});
 
-// ✅ Remove profile picture API
+// Remove profile picture
 router.delete("/removeProfilePic/:id", auth, async (req, res) => {
   try {
     const userId = req.params.id;
 
-    // Get old profilePicId
-    const [rows] = await db
-      .promise()
-      .query("SELECT profilePicId FROM users WHERE id = ?", [userId]);
-
-    if (!rows.length || !rows[0].profilePicId) {
+    const [rows] = await db.promise().query("SELECT profilePicId FROM users WHERE id = ?", [userId]);
+    if (!rows.length || !rows[0].profilePicId)
       return res.status(400).json({ message: "No profile picture to remove" });
-    }
 
-    const publicId = rows[0].profilePicId;
-
-    // Delete from Cloudinary
-    await cloudinary.uploader.destroy(publicId);
-
-    // Update DB to remove profile picture info
-    await db
-      .promise()
-      .query(
-        "UPDATE users SET profile_picture = NULL, profilePicId = NULL WHERE id = ?",
-        [userId]
-      );
+    await cloudinary.uploader.destroy(rows[0].profilePicId);
+    await db.promise().query("UPDATE users SET profile_picture = NULL, profilePicId = NULL WHERE id = ?", [userId]);
 
     res.json({ message: "Profile picture removed successfully" });
   } catch (err) {
-    console.error("❌ Error removing profile picture:", err);
+    console.error("Error removing profile picture:", err);
     res.status(500).json({ message: "Failed to remove profile picture" });
   }
 });
